@@ -1,6 +1,6 @@
 /// <reference lib="dom" />
 
-import { type FC, type ReactNode, type Thenable, use } from "react";
+import { type FC, type ReactNode, use } from "react";
 import { hydrateRoot } from "react-dom/client";
 
 import "../webpack";
@@ -13,7 +13,7 @@ import {
 } from "react-server-dom-webpack/client.browser";
 
 function main(rscPayload: Uint8Array) {
-	const promise: Thenable<ReactNode> = createFromReadableStream(
+	const promise: Promise<ReactNode> = createFromReadableStream(
 		new Response(rscPayload).body,
 		{
 			async callServer(id: string, args: unknown) {

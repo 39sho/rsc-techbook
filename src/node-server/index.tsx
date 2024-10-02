@@ -64,19 +64,36 @@ router.get(
 				),
 			).tee();
 
-		const rscText = await new Response(rscPayload2).text();
+		// const rscText = await new Response(rscPayload2).text();
+
+		const rscTextReader = rscPayload2
+			.pipeThrough(new TextDecoderStream())
+			.getReader();
 
 		const html = (await client.renderToHtml(rscPayload1))
 			.pipeThrough(new TextDecoderStream())
 			.pipeThrough(
 				new TransformStream({
-					transform(chunk, controller) {
+					async transform(chunk, controller) {
+						if (chunk.indexOf("</body>") === -1) {
+							controller.enqueue(chunk);
+							return;
+						}
+
+						const [before, after] = chunk.split("</body>");
+
 						controller.enqueue(
-							chunk.replace(
-								"</body>",
-								`<script id="rsc_payload" type="rsc_payload">${rscText}</script></body>`,
-							),
+							`${before}<script id="rsc_payload" type="rsc_payload">`,
 						);
+
+						let streamRes = await rscTextReader.read();
+
+						while (!streamRes.done) {
+							controller.enqueue(streamRes.value);
+							streamRes = await rscTextReader.read();
+						}
+
+						controller.enqueue(`</script>${after}`);
 					},
 				}),
 			);
