@@ -14,7 +14,7 @@ const App = () => {
 				<Counter sleep={promise} />
 			</Suspense>
 			<Action action={ActionFn} />
-			<Suspense fallback="loading...">
+			<Suspense fallback="sleeping...">
 				<Sleep />
 			</Suspense>
 			<form action={FormActionFn}>
