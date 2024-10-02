@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { use, useState } from "react";
 
-const Counter = () => {
+const Counter = ({ sleep }: { sleep: Promise<unknown> }) => {
+	use(sleep);
+
 	const [count, setCount] = useState(0);
 
 	const onclick = () => setCount((count) => count + 1);
