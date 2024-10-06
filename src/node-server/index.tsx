@@ -29,14 +29,16 @@ const client: Client = await runtime.executeUrl("./src/node-client");
 
 const app = createApp();
 
+app.use(fromNodeMiddleware(vite.middlewares));
+
 const router = createRouter();
 app.use(router);
 
-app.use(fromNodeMiddleware(vite.middlewares));
-
 router.get(
-	"/*",
+	"/",
 	defineEventHandler(async (event) => {
+		console.log(`request: ${event.node.req.url}`);
+
 		const document = (
 			<Document>
 				<App />
