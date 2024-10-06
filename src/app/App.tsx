@@ -10,9 +10,10 @@ const App = () => {
 	return (
 		<div>
 			<div>Hello!</div>
-			<Suspense fallback={<div>loading...</div>}>
+			<Suspense fallback="loading...">
 				<Counter sleep={promise} />
 			</Suspense>
+			<Counter />
 			<Action action={ActionFn} />
 			<Suspense fallback={<div>sleeping...</div>}>
 				<Sleep />

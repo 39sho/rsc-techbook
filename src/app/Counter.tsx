@@ -2,8 +2,8 @@
 
 import { use, useState } from "react";
 
-const Counter = ({ sleep }: { sleep: Promise<unknown> }) => {
-	use(sleep);
+const Counter = ({ sleep }: { sleep?: Promise<unknown> }) => {
+	if (sleep != null) use(sleep);
 
 	const [count, setCount] = useState(0);
 
