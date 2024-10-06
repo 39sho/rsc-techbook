@@ -5,16 +5,19 @@ import { Counter } from "./Counter";
 import { Sleep } from "./Sleep";
 
 const App = () => {
-	const promise = new Promise((resolve, _reject) => setTimeout(resolve, 5000));
+	const promise = new Promise((resolve, _reject) => setTimeout(resolve, 3000));
 
 	return (
 		<div>
 			<div>Hello!</div>
-			<Suspense fallback="loading...">
+			<Suspense fallback={<div>loading...</div>}>
 				<Counter sleep={promise} />
 			</Suspense>
 			<Action action={ActionFn} />
-			<Suspense fallback="sleeping...">
+			<Suspense fallback={<div>sleeping...</div>}>
+				<Sleep />
+			</Suspense>
+			<Suspense fallback={<div>sleeping...</div>}>
 				<Sleep />
 			</Suspense>
 			<form action={FormActionFn}>

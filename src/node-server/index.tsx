@@ -19,6 +19,7 @@ import {
 
 import { Document } from "../app/Document";
 import { App } from "../app/App";
+import { rmSync } from "node:fs";
 
 const vite = await createServer({
 	configFile: "./vite-client.config.ts",
@@ -64,39 +65,62 @@ router.get(
 				),
 			).tee();
 
-		// const rscText = await new Response(rscPayload2).text();
-
-		const rscTextReader = rscPayload2
+		const htmlReader = (await client.renderToHtml(rscPayload1))
 			.pipeThrough(new TextDecoderStream())
 			.getReader();
 
-		const html = (await client.renderToHtml(rscPayload1))
+		const rscTextReader = rscPayload2
 			.pipeThrough(new TextDecoderStream())
 			.pipeThrough(
 				new TransformStream({
-					async transform(chunk, controller) {
-						if (chunk.indexOf("</body>") === -1) {
-							controller.enqueue(chunk);
-							return;
-						}
-
-						const [before, after] = chunk.split("</body>");
-
+					transform(chunk, controller) {
 						controller.enqueue(
-							`${before}<script id="rsc_payload" type="rsc_payload">`,
+							`<script>globalThis.rsc.push(\`${chunk}\`)</script>`,
 						);
-
-						let streamRes = await rscTextReader.read();
-
-						while (!streamRes.done) {
-							controller.enqueue(streamRes.value);
-							streamRes = await rscTextReader.read();
-						}
-
-						controller.enqueue(`</script>${after}`);
+					},
+					flush(controller) {
+						controller.enqueue("<script>globalThis.rsc.end()</script>");
 					},
 				}),
-			);
+			)
+			.getReader();
+
+		const html = new ReadableStream({
+			async pull(controller) {
+				const dones = await await [htmlReader, rscTextReader].map((reader) => {
+					return reader.read().then((res) => {
+						if (res.done) return true;
+
+						controller.enqueue(res.value);
+						return false;
+					});
+				});
+
+				const done = await Promise.allSettled(
+					[htmlReader, rscTextReader].map((reader) => {
+						return reader.read().then((res) => {
+							if (res.done) return true;
+
+							controller.enqueue(res.value);
+							return false;
+						});
+					}),
+				);
+
+				if (
+					done[0].status === "fulfilled" &&
+					done[1].status === "fulfilled" &&
+					done[0].value &&
+					done[1].value
+				)
+					controller.close();
+			},
+			cancel() {
+				[htmlReader, rscTextReader].map((reader) => {
+					reader.cancel();
+				});
+			},
+		});
 
 		setResponseHeader(event, "Content-Type", "text/html");
 		return sendStream(event, html);

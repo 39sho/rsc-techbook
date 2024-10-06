@@ -8,7 +8,6 @@ export const Document = ({ children }: { children: ReactNode }) => (
 		</head>
 		<body>
 			{children}
-			<script type="module" src="/src/browser-client/index.tsx" />
 		</body>
 	</html>
 );

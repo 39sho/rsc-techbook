@@ -1,4 +1,4 @@
-import { type FC, type ReactNode, type Thenable, use } from "react";
+import { type FC, type ReactNode, use } from "react";
 
 // @ts-expect-error
 import a from "react-dom/server.edge";
@@ -11,7 +11,7 @@ const { createFromReadableStream } = b;
 import "../webpack";
 
 const renderToHtml = async (rscPayload: ReadableStream) => {
-	const promise: Thenable<ReactNode> = createFromReadableStream(rscPayload, {
+	const promise: Promise<ReactNode> = createFromReadableStream(rscPayload, {
 		ssrManifest: {
 			moduleMap: new Proxy(
 				{},
@@ -34,8 +34,13 @@ const renderToHtml = async (rscPayload: ReadableStream) => {
 			),
 		},
 	});
+
 	const Async: FC = () => use(promise);
-	const stream = await renderToReadableStream(<Async />);
+	const stream = await renderToReadableStream(<Async />, {
+		bootstrapScriptContent: "globalThis.rsc = [];",
+		bootstrapModules: ["/src/browser-client/index.tsx"],
+	});
+
 	return stream;
 };
 
