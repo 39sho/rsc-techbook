@@ -84,26 +84,31 @@ router.get(
 			)
 			.getReader();
 
+		let closed = false;
+
 		const html = new ReadableStream({
-			async pull(controller) {
-				const done = await Promise.allSettled(
-					[htmlReader, rscTextReader].map((reader) => {
-						return reader.read().then((res) => {
-							if (res.done) return true;
+			pull(controller) {
+				const fn = async () => {
+					const done = await Promise.all(
+						[htmlReader, rscTextReader].map((reader) => {
+							return reader.read().then((res) => {
+								if (res.done) return true;
 
-							controller.enqueue(res.value);
-							return false;
-						});
-					}),
-				);
+								controller.enqueue(res.value);
+								return false;
+							});
+						}),
+					);
 
-				if (
-					done[0].status === "fulfilled" &&
-					done[1].status === "fulfilled" &&
-					done[0].value &&
-					done[1].value
-				)
-					controller.close();
+					if (done[0] && done[1]) {
+						if (!closed) {
+							closed = true;
+							controller.close();
+						}
+					}
+				};
+
+				fn();
 			},
 			cancel() {
 				[htmlReader, rscTextReader].map((reader) => {
