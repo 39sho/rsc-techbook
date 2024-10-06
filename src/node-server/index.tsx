@@ -19,7 +19,6 @@ import {
 
 import { Document } from "../app/Document";
 import { App } from "../app/App";
-import { rmSync } from "node:fs";
 
 const vite = await createServer({
 	configFile: "./vite-client.config.ts",
@@ -87,15 +86,6 @@ router.get(
 
 		const html = new ReadableStream({
 			async pull(controller) {
-				const dones = await await [htmlReader, rscTextReader].map((reader) => {
-					return reader.read().then((res) => {
-						if (res.done) return true;
-
-						controller.enqueue(res.value);
-						return false;
-					});
-				});
-
 				const done = await Promise.allSettled(
 					[htmlReader, rscTextReader].map((reader) => {
 						return reader.read().then((res) => {
