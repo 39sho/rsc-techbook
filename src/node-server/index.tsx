@@ -66,13 +66,25 @@ router.get(
 				),
 			).tee();
 
+		type streamData = {
+			type: "html" | "rsc";
+			chunk: string;
+		};
+
 		const htmlReader = (await client.renderToHtml(rscPayload1))
 			.pipeThrough(new TextDecoderStream())
+			.pipeThrough<streamData>(
+				new TransformStream({
+					transform(chunk, controller) {
+						controller.enqueue({ type: "html", chunk });
+					},
+				}),
+			)
 			.getReader();
 
 		const rscTextReader = rscPayload2
 			.pipeThrough(new TextDecoderStream())
-			.pipeThrough(
+			.pipeThrough<string>(
 				new TransformStream({
 					transform(chunk, controller) {
 						controller.enqueue(
@@ -84,33 +96,30 @@ router.get(
 					},
 				}),
 			)
+			.pipeThrough<streamData>(
+				new TransformStream({
+					transform(chunk, controller) {
+						controller.enqueue({ type: "rsc", chunk });
+					},
+				}),
+			)
 			.getReader();
 
-		let closed = false;
+		const stock: [
+			html: Promise<ReadableStreamReadResult<streamData>>,
+			rsc: Promise<ReadableStreamReadResult<streamData>>,
+		] = [htmlReader.read(), rscTextReader.read()];
 
 		const html = new ReadableStream({
-			pull(controller) {
-				const fn = async () => {
-					const done = await Promise.all(
-						[htmlReader, rscTextReader].map((reader) => {
-							return reader.read().then((res) => {
-								if (res.done) return true;
+			async pull(controller) {
+				const data = await Promise.race(stock);
 
-								controller.enqueue(res.value);
-								return false;
-							});
-						}),
-					);
+				if (data.done) return;
 
-					if (done[0] && done[1]) {
-						if (!closed) {
-							closed = true;
-							controller.close();
-						}
-					}
-				};
+				if (data.value.type === "html") stock[0] = htmlReader.read();
+				else stock[1] = rscTextReader.read();
 
-				fn();
+				controller.enqueue(data.value.chunk);
 			},
 			cancel() {
 				[htmlReader, rscTextReader].map((reader) => {
