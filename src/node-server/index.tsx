@@ -110,9 +110,21 @@ router.get(
 			rsc: Promise<ReadableStreamReadResult<streamData>>,
 		] = [htmlReader.read(), rscTextReader.read()];
 
+		htmlReader.closed.then(() => {
+			stock[0] = Promise.reject();
+		});
+
+		rscTextReader.closed.then(() => {
+			stock[1] = Promise.reject();
+		});
+
 		const html = new ReadableStream({
 			async pull(controller) {
-				const data = await Promise.race(stock);
+				const data = await Promise.any(stock).catch(() => {
+					controller.close();
+				});
+
+				if (data == null) return;
 
 				if (data.done) return;
 
